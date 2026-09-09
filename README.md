@@ -35,8 +35,11 @@ Add URLs  →  choose a category  →  collect  →  validate  →  export  → 
 
 ## Installing
 
-Grab the installer for your platform from the release you built (see
-[docs/BUILD.md](docs/BUILD.md)), then:
+**Don't have an installer yet?** See **[PUBLISHING.md](PUBLISHING.md)** — one
+command pushes this to GitHub and a real Windows/macOS/Linux machine builds
+every installer for you.
+
+Once you have one:
 
 - **macOS** — open the `.dmg`, drag **ToTo Company** to Applications. The first
   launch of an unsigned personal build needs a right-click → **Open** → **Open**;
@@ -130,6 +133,7 @@ else.
 - [docs/RELEASE.md](docs/RELEASE.md) — producing installers
 - [docs/SECURITY.md](docs/SECURITY.md) — the security model
 - [docs/DATA-MODEL.md](docs/DATA-MODEL.md) — the canonical product schema
+- [PUBLISHING.md](PUBLISHING.md) — getting the installers built for you
 - [CONTRIBUTING.md](CONTRIBUTING.md) — working on the code
 
 ---

@@ -1,0 +1,106 @@
+name: Build installers
+
+# Produces the installable applications. Runs on every version tag, and can be
+# started by hand from the Actions tab.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Tag to publish the installers under (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    name: Typecheck and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run typecheck
+      - run: npm test
+
+  build:
+    name: ${{ matrix.name }}
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows installer
+            command: npm run dist:win
+            artifacts: 'release/*.exe'
+          - os: macos-latest
+            name: macOS disk images
+            command: npm run dist:mac
+            artifacts: 'release/*.dmg release/*.zip'
+          - os: ubuntu-latest
+            name: Linux packages
+            command: npm run dist:linux
+            artifacts: 'release/*.AppImage release/*.deb'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - name: Build
+        run: ${{ matrix.command }}
+        env:
+          # This is a personal, unsigned build. Signing needs certificates that
+          # deliberately do not live in this repository.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: List what was produced
+        shell: bash
+        run: ls -lh release/ || dir release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-installers
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.zip
+            release/*.AppImage
+            release/*.deb
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Collect the installers
+        run: |
+          mkdir -p out
+          find artifacts -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.zip' -o -name '*.AppImage' -o -name '*.deb' \) -exec cp {} out/ \;
+          ls -lh out/
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.event.inputs.release_tag || github.ref_name }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/* --clobber
+          else
+            gh release create "$TAG" out/* \
+              --title "ToTo Company $TAG" \
+              --notes-file docs/release-notes.md \
+              --latest
+          fi
+          echo "Release: $(gh release view "$TAG" --json url --jq .url)"
