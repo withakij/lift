@@ -199,6 +199,8 @@ export const shopifyLayer: ExtractionLayer = {
 
     /* ---------------- images ---------------- */
     const imageById = new Map<string, string>();
+    const featuredRaw = featuredUrl(json);
+    const featuredAbs = featuredRaw ? upscaleShopifyImage(absoluteUrl(featuredRaw, ctx.finalUrl) ?? featuredRaw) : null;
     const imgs = json.images ?? [];
     imgs.forEach((im, i) => {
       const url = typeof im === 'string' ? im : im.src;
@@ -213,15 +215,15 @@ export const shopifyLayer: ExtractionLayer = {
         position,
         width: typeof im === 'string' ? null : im.width ?? null,
         height: typeof im === 'string' ? null : im.height ?? null,
-        isFeatured: i === 0 && !!featuredUrl(json)
+        // Only the image the store itself names is the featured one. Position 1
+        // is not evidence of anything.
+        isFeatured: featuredAbs !== null && full === featuredAbs
       });
     });
 
-    const feat = featuredUrl(json);
-    if (feat) {
-      const absFeat = upscaleShopifyImage(absoluteUrl(feat, ctx.finalUrl) ?? feat);
-      addImage(ctx, absFeat, src, { isFeatured: true, position: 1 });
-      ctx.product.featuredImageUrl = absFeat;
+    if (featuredAbs) {
+      addImage(ctx, featuredAbs, src, { isFeatured: true, position: 1 });
+      ctx.product.featuredImageUrl = featuredAbs;
       ctx.product.provenance['featuredImageUrl'] = { source: src, confidence: 'high', note: 'featured_image' };
       produced++;
     }

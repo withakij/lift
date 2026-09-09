@@ -1,7 +1,7 @@
 import { h, icon } from '../lib/dom.js';
 import { badge, banner, button, emptyState, progressBar, sectionHead, segmentBar, stat, table } from '../lib/ui.js';
 import { currentProject, getState, setView, type ViewId } from '../lib/state.js';
-import { dateTime, hostOf, number, plural, relativeTime, urlStateLabel } from '../lib/format.js';
+import { dateTime, hostOf, number, pathOf, plural, relativeTime, urlStateLabel } from '../lib/format.js';
 import { startScrape, pauseScrape, resumeScrape, cancelScrape, retryFailed } from '../actions.js';
 import { openNewProject } from './projects.js';
 
@@ -342,7 +342,7 @@ function recentActivity(): HTMLElement {
                     'div',
                     { class: 'urlcell' },
                     h('div', { class: 'urlcell__host' }, hostOf(u.url)),
-                    h('span', { class: 'urlcell__path', title: u.url }, new URL(u.url).pathname)
+                    h('span', { class: 'urlcell__path', title: u.url }, pathOf(u.url))
                   )
               },
               {

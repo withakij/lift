@@ -96,8 +96,7 @@ export function renderUrls(): HTMLElement {
           value: s.filters.categoryId ?? '',
           options: categoryOptions,
           onChange: (v) => {
-            s.filters.categoryId = v === '' ? null : v === '__none__' ? '__none__' : v;
-            if (v === '__none__') s.filters.categoryId = '__none__';
+            s.filters.categoryId = v === '' ? null : v;
             notify();
           }
         })

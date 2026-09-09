@@ -253,10 +253,15 @@ function advancedLogs(): HTMLElement {
 /* ------------------------------------------------------------------ */
 
 let jobsLoading = false;
+let jobsLoadedAt = 0;
+
+/** Rendering happens on every progress event, so this is throttled. */
 async function loadJobs(): Promise<void> {
   const projectId = getState().projectId;
   if (!projectId || jobsLoading) return;
+  if (Date.now() - jobsLoadedAt < 3000) return;
   jobsLoading = true;
+  jobsLoadedAt = Date.now();
   try {
     const next = await api.scrape.jobs(projectId);
     const changed = next.length !== jobs.length || next.some((j, i) => j.state !== jobs[i]?.state);

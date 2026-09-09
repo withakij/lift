@@ -1,19 +1,16 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true,
+    "outDir": "dist/test",
+    "rootDir": ".",
     "types": [
       "node"
     ],
-    "typeRoots": [
-      "./node_modules/@types",
-      "/opt/node-tools/node_modules/@types"
-    ]
+    "sourceMap": true
   },
   "include": [
     "src/main/**/*.ts",
     "src/shared/**/*.ts",
-    "tools/offline-types/**/*.d.ts",
     "tests/**/*.ts"
   ]
 }

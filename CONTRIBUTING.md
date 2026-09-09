@@ -67,6 +67,9 @@ Pick the severity by what actually happens on import:
 npm test
 ```
 
+This compiles `src/` and `tests/` to `dist/test/` and runs the suite against the
+**compiled output**, so what is tested is what ships.
+
 Tests live in `tests/`, fixtures in `tests/fixtures/`. `tests/helpers.ts`
 provides an offline fetcher so extraction tests never touch the network.
 
@@ -83,6 +86,14 @@ This serves the real interface against sample data in an ordinary browser, so
 you can iterate without launching Electron. `node scripts/preview.mjs --shot`
 drives it with Playwright, captures every screen, and **fails on any page
 error** — worth running before you commit UI changes.
+
+## Verifying without installing anything
+
+`tsconfig.check.json` and `tsconfig.test.local.json` typecheck and build using a
+minimal Electron type stub in `tools/offline-types/`, for machines that cannot
+reach the npm registry. They are development aids: the real build always uses
+`tsconfig.main.json` and `tsconfig.renderer.json` against the real `electron`
+package, and the stub is never part of a shipped build.
 
 ## Style
 

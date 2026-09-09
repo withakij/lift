@@ -4,7 +4,9 @@ import type { FetchLike, FetchOptions, FetchResult } from '../src/main/scraper/f
 import { ScrapeEngine } from '../src/main/scraper/engine';
 import { DEFAULT_SETTINGS, type AppSettings } from '../src/shared/types';
 
-export const FIXTURES = path.join(__dirname, 'fixtures');
+// Resolved from the project root so this works whether the tests run from
+// source or from the compiled output in dist/test.
+export const FIXTURES = path.join(process.cwd(), 'tests', 'fixtures');
 
 export function fixture(name: string): string {
   return readFileSync(path.join(FIXTURES, name), 'utf8');
