@@ -11,8 +11,8 @@ Visual Studio Build Tools, no Python.
 ## Get going
 
 ```bash
-git clone <your repo url> toto
-cd toto
+git clone <your repo url> lift
+cd lift
 npm install
 ```
 

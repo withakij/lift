@@ -11,7 +11,7 @@
  *   ERROR    — the row is wrong or unusable; excluded from a strict export.
  *   CRITICAL — data integrity is compromised (mixed variants, orphan rows).
  */
-import type { CanonicalProduct } from '../../shared/canonical';
+import { normaliseDimensionUnit, normaliseWeightUnit, type CanonicalProduct } from '../../shared/canonical';
 import type { Severity, TargetFormat, ValidationIssue, ValidationRunSummary } from '../../shared/types';
 import { newId, nowIso } from '../db/store';
 import { optionSignature } from '../scraper/productutil';
@@ -36,6 +36,9 @@ export interface ValidationRule {
 /* ------------------------------------------------------------------ */
 /* Per-product rules                                                   */
 /* ------------------------------------------------------------------ */
+
+/** Shopify products carry at most three option axes (Option1/2/3). */
+const SHOPIFY_MAX_OPTIONS = 3;
 
 const requiredFields: ValidationRule = {
   id: 'required-fields',
@@ -434,9 +437,73 @@ const orphanVariants: ValidationRule = {
   }
 };
 
+/**
+ * What the destination format itself cannot represent. These are limits of
+ * Shopify and WooCommerce, not of the source page, and the operator has to know
+ * before the file is written rather than after the import.
+ */
+const destinationLimits: ValidationRule = {
+  id: 'destination-limits',
+  label: 'Destination limits',
+  scope: 'product',
+  run({ product, targetFormat, report }) {
+    if (targetFormat === 'shopify') {
+      const axes = optionAxisNames(product);
+      if (axes.length > SHOPIFY_MAX_OPTIONS) {
+        const dropped = axes.slice(SHOPIFY_MAX_OPTIONS);
+        report({ ruleId: 'destination-limits', severity: 'ERROR', variantId: null, field: 'options', observed: axes.join(', '),
+          message: `This product has ${axes.length} option axes and Shopify allows ${SHOPIFY_MAX_OPTIONS}, so ${dropped.join(' and ')} cannot be exported.`,
+          hint: 'Combine two axes into one on the source, or export this product to WooCommerce, which has no such limit.' });
+      }
+    }
+
+    // A measurement without a unit cannot be converted, so it is written as the
+    // bare number the source gave and may be read as the store's own unit.
+    const weights: Array<{ value: number | null; unit: string | null; what: string }> = [
+      { value: product.weight, unit: product.weightUnit, what: 'This product' },
+      ...product.variants.map((v) => ({ value: v.weight, unit: v.weightUnit, what: `Variant "${describeVariant(v.options)}"` }))
+    ];
+    for (const w of weights) {
+      if (w.value !== null && !normaliseWeightUnit(w.unit)) {
+        report({ ruleId: 'destination-limits', severity: 'WARNING', variantId: null, field: 'weightUnit', observed: w.unit,
+          message: `${w.what} has a weight of ${w.value} but the source did not say in what unit.`,
+          hint: 'It is exported as that bare number. Check it against the source page before importing, because the store will read it as its own weight unit.' });
+        break;
+      }
+    }
+    const hasDimension = product.length !== null || product.width !== null || product.height !== null;
+    if (hasDimension && !normaliseDimensionUnit(product.dimensionUnit)) {
+      report({ ruleId: 'destination-limits', severity: 'WARNING', variantId: null, field: 'dimensionUnit', observed: product.dimensionUnit,
+        message: 'Dimensions were found but the source did not say whether they are centimetres, inches or something else.',
+        hint: 'They are exported as the bare numbers. Check them against the source page before importing.' });
+    }
+  }
+};
+
+function optionAxisNames(p: CanonicalProduct): string[] {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  for (const o of p.options) {
+    const key = o.name.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    names.push(o.name);
+  }
+  for (const v of p.variants) {
+    for (const o of v.options) {
+      const key = o.name.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      names.push(o.name);
+    }
+  }
+  return names;
+}
+
 export const RULES: ValidationRule[] = [
   requiredFields,
   productType,
+  destinationLimits,
   variantIntegrity,
   variantImages,
   priceConsistency,

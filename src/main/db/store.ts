@@ -27,7 +27,7 @@ export interface Identified {
 type StoreErrorHandler = (message: string, error: unknown) => void;
 
 let onStoreError: StoreErrorHandler = (message, error) => {
-  if (process.env.TOTO_DEV) console.error('[store]', message, error);
+  if (process.env.LIFT_DEV) console.error('[store]', message, error);
 };
 
 export function setStoreErrorHandler(fn: StoreErrorHandler): void {

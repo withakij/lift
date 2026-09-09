@@ -181,6 +181,8 @@ export interface ExportRecord {
   skippedCount: number;
   status: 'success' | 'partial' | 'failed';
   filePath: string;
+  /** Size of the file as it was found on disk after writing. */
+  byteSize?: number;
   message: string | null;
 }
 
@@ -224,7 +226,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   maxRetries: 2,
   retryBackoffMs: 4000,
   userAgent:
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 TotoMigrator/1.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Lift/1.0',
   respectRobotsTxt: true,
   browserRenderMode: 'auto',
   enableVariantInteraction: true,

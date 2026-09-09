@@ -97,7 +97,7 @@ export function renderSettings(): HTMLElement {
         h(
           'div',
           { class: 'row' },
-          h('span', { class: 'mono tiny' }, cfg.defaultExportDir ?? 'Documents / ToTo Exports'),
+          h('span', { class: 'mono tiny' }, cfg.defaultExportDir ?? 'Documents / Lift Exports'),
           h('div', { class: 'header__spacer' }),
           button({
             label: 'Choose…',
@@ -159,7 +159,7 @@ export function renderSettings(): HTMLElement {
           h(
             'div',
             null,
-            h('div', { style: 'font-weight:640;font-size:15px' }, 'ToTo Company'),
+            h('div', { style: 'font-weight:640;font-size:15px' }, 'Lift'),
             h('div', { class: 'tiny muted' }, 'Product collection and migration · Made by Rahul Raj')
           ),
           h('div', { class: 'header__spacer' }),

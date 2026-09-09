@@ -72,14 +72,14 @@ if (process.argv.includes('--shot')) {
   await mkdir(outDir, { recursive: true });
 
   for (const view of shots) {
-    await page.evaluate((v) => window.__totoSetView(v), view.trim());
+    await page.evaluate((v) => window.__liftSetView(v), view.trim());
     await page.waitForTimeout(320);
     await page.screenshot({ path: join(outDir, `${view.trim()}.png`), fullPage: false });
     console.log(`captured ${view.trim()}`);
   }
 
   // Exercise a couple of dialogs too.
-  await page.evaluate(() => window.__totoSetView('urls'));
+  await page.evaluate(() => window.__liftSetView('urls'));
   await page.waitForTimeout(200);
   const addBtn = page.locator('button:has-text("Add URLs")').first();
   if (await addBtn.count()) {
@@ -90,7 +90,7 @@ if (process.argv.includes('--shot')) {
     await page.keyboard.press('Escape');
   }
 
-  await page.evaluate(() => window.__totoSetView('products'));
+  await page.evaluate(() => window.__liftSetView('products'));
   await page.waitForTimeout(250);
   // Pick a variable product so the variant table is actually exercised.
   const firstRow = page.locator('table.table tbody tr', { has: page.locator('.badge--brand') }).first();

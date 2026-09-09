@@ -93,4 +93,4 @@ const api = {
   }
 };
 
-contextBridge.exposeInMainWorld('toto', api);
+contextBridge.exposeInMainWorld('lift', api);

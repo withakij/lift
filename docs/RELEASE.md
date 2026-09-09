@@ -39,9 +39,9 @@ Artefacts appear in `release/`:
 
 | Platform | File |
 |---|---|
-| macOS | `ToTo Company-<version>-arm64.dmg`, `-x64.dmg`, plus `.zip` |
-| Windows | `ToTo Company Setup <version>.exe` |
-| Linux | `ToTo Company-<version>.AppImage`, `.deb` |
+| macOS | `Lift-<version>-arm64.dmg`, `-x64.dmg`, plus `.zip` |
+| Windows | `Lift Setup <version>.exe` |
+| Linux | `Lift-<version>.AppImage`, `.deb` |
 
 ## macOS first launch
 
@@ -53,7 +53,7 @@ therefore quarantines it on first open.
 If macOS refuses outright, clear the quarantine flag:
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/ToTo Company.app"
+xattr -dr com.apple.quarantine "/Applications/Lift.app"
 ```
 
 If you do get a Developer ID later, set `identity` in `electron-builder.yml` to

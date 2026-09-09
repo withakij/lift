@@ -30,7 +30,7 @@ class Logger extends EventEmitter {
       urlId: ctx?.urlId,
       detail: detail === undefined ? undefined : typeof detail === 'string' ? detail : safeStringify(detail)
     };
-    if (process.env.TOTO_DEV) {
+    if (process.env.LIFT_DEV) {
       const tag = `[${level.toUpperCase()}][${scope}]`;
       if (level === 'error') console.error(tag, message, entry.detail ?? '');
       else console.log(tag, message, entry.detail ?? '');

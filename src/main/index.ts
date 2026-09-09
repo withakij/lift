@@ -1,5 +1,6 @@
 import { app, BrowserWindow, shell } from 'electron';
 import * as path from 'node:path';
+import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { initDb, db } from './db';
 import { setStoreErrorHandler } from './db/store';
 import { registerIpc } from './ipc';
@@ -8,11 +9,11 @@ import { createEngine } from './scraper/engine';
 import { disposeRenderer } from './scraper/renderer';
 import { log } from './util/logger';
 
-const isDev = process.env.TOTO_DEV === '1';
+const isDev = process.env.LIFT_DEV === '1';
 let mainWindow: BrowserWindow | null = null;
 let queue: ScrapeQueue | null = null;
 
-app.setName('ToTo Company');
+app.setName('Lift');
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -27,6 +28,7 @@ async function bootstrap(): Promise<void> {
   await app.whenReady();
 
   const dataDir = path.join(app.getPath('userData'), 'data');
+  adoptDataFromPreviousName(dataDir);
   const database = initDb(dataDir);
 
   // Route the logger into the rolling on-disk log.
@@ -36,7 +38,7 @@ async function bootstrap(): Promise<void> {
   });
   setStoreErrorHandler((message, err) => log.error('storage', `${message}. Your work is still in memory and will be retried.`, err));
   log.setLevel(database.getSettings().advancedMode ? 'debug' : 'info');
-  log.info('app', `ToTo Company ${app.getVersion()} starting`, { dataDir });
+  log.info('app', `Lift ${app.getVersion()} starting`, { dataDir });
 
   const { engine, fetcher } = createEngine(database.getSettings());
   queue = new ScrapeQueue({ db: database, engine });
@@ -57,13 +59,36 @@ async function bootstrap(): Promise<void> {
   });
 }
 
+/**
+ * The app used to be called "ToTo Company", so Electron kept its data in a
+ * folder of that name. Renaming moved the folder Electron looks in, which would
+ * present an existing operator with an empty app and their projects apparently
+ * gone. If the new folder has no data and the old one does, the old one is
+ * adopted as-is — copied, never moved, so the previous version still opens.
+ */
+function adoptDataFromPreviousName(dataDir: string): void {
+  const PREVIOUS_NAME = 'ToTo Company';
+  try {
+    if (existsSync(dataDir) && readdirSync(dataDir).length > 0) return;
+    const previous = path.join(path.dirname(path.dirname(dataDir)), PREVIOUS_NAME, 'data');
+    if (!existsSync(previous) || readdirSync(previous).length === 0) return;
+
+    mkdirSync(dataDir, { recursive: true });
+    cpSync(previous, dataDir, { recursive: true });
+    log.info('app', `Adopted the data folder from ${PREVIOUS_NAME}`, { from: previous, to: dataDir });
+  } catch (err) {
+    // Starting empty is recoverable; refusing to start is not.
+    log.error('app', 'Could not carry over the data folder from the previous version', err);
+  }
+}
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 940,
     minWidth: 1080,
     minHeight: 700,
-    title: 'ToTo Company',
+    title: 'Lift',
     backgroundColor: '#0b0d12',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 18, y: 22 },

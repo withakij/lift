@@ -459,7 +459,7 @@ export function registerIpc(w: Wiring): void {
     const d = D();
     const products = loadProjectProducts(opts.projectId);
     if (!products.length) throw new Error('There are no scraped products in this project yet.');
-    const defaultDir = d.getSettings().defaultExportDir ?? path.join(app.getPath('documents'), 'ToTo Exports');
+    const defaultDir = d.getSettings().defaultExportDir ?? path.join(app.getPath('documents'), 'Lift Exports');
     const { record } = await runExport(products, d.issues.find((i) => i.projectId === opts.projectId), opts, defaultDir);
     d.exportsLog.insert(record);
     d.exportsLog.flushSync();

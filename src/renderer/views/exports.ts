@@ -15,7 +15,7 @@ import {
 import { currentProject, getState, setView } from '../lib/state.js';
 import { chooseExportFolder, revealExport, runExport, runValidation } from '../actions.js';
 import { api } from '../lib/api.js';
-import { dateTime, number, plural, relativeTime } from '../lib/format.js';
+import { dateTime, fileSize, number, plural, relativeTime } from '../lib/format.js';
 import type { ExportOptions, Severity } from '../../shared/types';
 
 export function renderExports(): HTMLElement {
@@ -146,7 +146,11 @@ export function renderExports(): HTMLElement {
                             'div',
                             null,
                             h('div', { class: 'mono tiny ellipsis', style: 'max-width:360px', title: e.filePath }, e.filePath),
-                            e.message ? h('div', { class: 'tiny muted' }, e.message) : null
+                            h(
+                              'div',
+                              { class: 'tiny muted' },
+                              [e.byteSize ? fileSize(e.byteSize) : null, e.message].filter(Boolean).join(' · ')
+                            )
                           )
                       },
                       {
@@ -190,7 +194,7 @@ function openExportDialog(previewOnly = false): void {
 
   const previewHost = h('div', { style: 'margin-top:16px' });
   const summaryHost = h('div');
-  let folderLabel = h('span', { class: 'mono tiny' }, opts.outputDir ?? 'Documents / ToTo Exports');
+  let folderLabel = h('span', { class: 'mono tiny' }, opts.outputDir ?? 'Documents / Lift Exports');
 
   const refreshPreview = async (): Promise<void> => {
     previewHost.replaceChildren(h('p', { class: 'tiny muted' }, 'Building preview…'));

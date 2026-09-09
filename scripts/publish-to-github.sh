@@ -3,9 +3,9 @@
 # produces the installers. Needs the GitHub CLI: https://cli.github.com
 set -euo pipefail
 
-REPO_NAME="${1:-toto-company}"
+REPO_NAME="${1:-lift}"
 VISIBILITY="${2:---private}"
-TAG="${3:-v1.0.0}"
+TAG="${3:-v1.1.0}"
 
 command -v gh >/dev/null || { echo "GitHub CLI not found. Install it: https://cli.github.com"; exit 1; }
 gh auth status >/dev/null 2>&1 || { echo "Not signed in. Run: gh auth login"; exit 1; }
@@ -21,7 +21,7 @@ if gh repo view "$OWNER/$REPO_NAME" >/dev/null 2>&1; then
 else
   gh repo create "$REPO_NAME" "$VISIBILITY" \
     --source=. --remote=origin --push \
-    --description "ToTo Company — product collection and migration for Shopify and WooCommerce. Made by Rahul Raj."
+    --description "Lift — product collection and migration for Shopify and WooCommerce. Made by Rahul Raj."
 fi
 
 echo "Tagging $TAG to start the build…"

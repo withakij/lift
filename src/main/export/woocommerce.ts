@@ -14,7 +14,14 @@
  * the parent's SKU column and reported in the export summary — it is an import
  * mechanism, never presented as source data, and it can be turned off.
  */
-import { normaliseWeightUnit, type CanonicalProduct, type CanonicalVariant } from '../../shared/canonical';
+import {
+  normaliseDimensionUnit,
+  normaliseWeightUnit,
+  toCentimetres,
+  toKilograms,
+  type CanonicalProduct,
+  type CanonicalVariant
+} from '../../shared/canonical';
 import { slugify } from '../validation/engine';
 import type { ExportColumn, ExportProfile, RowContext } from './types';
 
@@ -24,6 +31,9 @@ export interface WooExportSettings {
   /** Suffix appended to generated keys so they never collide with real SKUs. */
   keyPrefix: string;
 }
+
+/** Namespace for the app's own meta columns, so they never clash with a store's. */
+const META_PREFIX = '_lift';
 
 export const DEFAULT_WOO_SETTINGS: WooExportSettings = {
   generateParentKeys: true,
@@ -39,8 +49,30 @@ export function configureWooExport(s: Partial<WooExportSettings>): void {
 /** Products whose parent key had to be generated during the last build. */
 export const generatedKeys = new Set<string>();
 
+/**
+ * A product that is not exported as a variable one but still carries a single
+ * variant keeps its price, SKU, stock and measurements on that variant — every
+ * Shopify "simple" product is shaped this way, because Shopify has no product
+ * without variants. WooCommerce writes those values on the product row itself,
+ * so the single variant is where the product row has to read them from.
+ *
+ * Only ever consulted for a lone variant: with two or more, variation rows are
+ * emitted and nothing may be lifted onto the parent.
+ */
+export function soleVariant(p: CanonicalProduct): CanonicalVariant | null {
+  if (emitsVariations(p)) return null;
+  return p.variants.length === 1 ? p.variants[0] : null;
+}
+
+/** Whether this product is written as a parent row plus variation rows. */
+function emitsVariations(p: CanonicalProduct): boolean {
+  return p.kind === 'variable' || p.variants.length > 1;
+}
+
 export function wooParentKey(p: CanonicalProduct): string {
   if (p.sku && p.sku.trim()) return p.sku.trim();
+  const sole = soleVariant(p);
+  if (sole?.sku && sole.sku.trim()) return sole.sku.trim();
   if (!settings.generateParentKeys) return '';
   const key = `${settings.keyPrefix}${p.handle?.trim() || slugify(p.title ?? '') || p.id}`;
   generatedKeys.add(p.id);
@@ -56,7 +88,9 @@ function wooType(p: CanonicalProduct): string {
     case 'external':
       return 'external';
     default:
-      return 'simple';
+      // Variation rows under a "simple" parent are rejected by the importer, so
+      // when several variants are written the parent must say it is variable.
+      return emitsVariations(p) ? 'variable' : 'simple';
   }
 }
 
@@ -115,6 +149,15 @@ function variantAxisValue(v: CanonicalVariant, axisName: string): string {
 
 const isVariation = (c: RowContext): boolean => c.rowType === 'variant';
 
+/**
+ * The variant a row should read variant-level fields from: the row's own
+ * variant on a variation row, and on a product row the lone variant a simple
+ * product may be carrying (see soleVariant).
+ */
+function rowVariant(c: RowContext): CanonicalVariant | null {
+  return isVariation(c) ? c.variant : soleVariant(c.product);
+}
+
 const C = {
   id: () => '',
   type: (c: RowContext) => (isVariation(c) ? 'variation' : wooType(c.product)),
@@ -133,45 +176,56 @@ const C = {
   saleTo: () => '',
   taxStatus: (c: RowContext) => c.product.taxStatus ?? 'taxable',
   taxClass: (c: RowContext) => c.product.taxClass ?? '',
-  inStock: (c: RowContext) => stockToBool(isVariation(c) ? c.variant?.stockStatus ?? 'unknown' : c.product.stockStatus),
+  inStock: (c: RowContext) => {
+    const v = rowVariant(c);
+    const status = isVariation(c)
+      ? v?.stockStatus ?? 'unknown'
+      : c.product.stockStatus !== 'unknown'
+        ? c.product.stockStatus
+        : v?.stockStatus ?? 'unknown';
+    return stockToBool(status);
+  },
   stock: (c: RowContext) => {
-    const q = isVariation(c) ? c.variant?.inventoryQuantity ?? null : c.product.inventoryQuantity;
+    const v = rowVariant(c);
+    const q = isVariation(c) ? v?.inventoryQuantity ?? null : c.product.inventoryQuantity ?? v?.inventoryQuantity ?? null;
     return q === null ? '' : String(q);
   },
   lowStock: (c: RowContext) => (c.product.lowStockAmount === null ? '' : String(c.product.lowStockAmount)),
   backorders: (c: RowContext) => {
-    const b = isVariation(c) ? c.variant?.backordersAllowed ?? null : c.product.backordersAllowed;
-    const status = isVariation(c) ? c.variant?.stockStatus : c.product.stockStatus;
+    const v = rowVariant(c);
+    const b = isVariation(c) ? v?.backordersAllowed ?? null : c.product.backordersAllowed ?? v?.backordersAllowed ?? null;
+    const status = isVariation(c) ? v?.stockStatus : c.product.stockStatus !== 'unknown' ? c.product.stockStatus : v?.stockStatus;
     if (b === null || b === undefined) return status === 'on_backorder' ? '1' : '';
     return b ? '1' : '0';
   },
   soldIndividually: (c: RowContext) => bool01(c.product.soldIndividually, ''),
+  /** Kilograms, to match the column header. An unconvertible unit is left blank. */
   weight: (c: RowContext) => {
-    const w = isVariation(c) ? c.variant?.weight ?? null : c.product.weight;
-    return w === null ? '' : String(w);
+    const v = rowVariant(c);
+    const w = isVariation(c) ? v?.weight ?? null : c.product.weight ?? v?.weight ?? null;
+    if (w === null) return '';
+    const unit = isVariation(c) ? v?.weightUnit ?? null : c.product.weightUnit ?? v?.weightUnit ?? null;
+    // No unit published anywhere: the number is all the source gave us, so it
+    // is passed through and the (empty) unit is recorded in the meta column.
+    if (!unit) return String(w);
+    return numOrBlank(toKilograms(w, unit));
   },
-  length: (c: RowContext) => numOrBlank(isVariation(c) ? c.variant?.length ?? null : c.product.length),
-  width: (c: RowContext) => numOrBlank(isVariation(c) ? c.variant?.width ?? null : c.product.width),
-  height: (c: RowContext) => numOrBlank(isVariation(c) ? c.variant?.height ?? null : c.product.height),
+  length: (c: RowContext) => dimension(c, 'length'),
+  width: (c: RowContext) => dimension(c, 'width'),
+  height: (c: RowContext) => dimension(c, 'height'),
   reviews: (c: RowContext) => bool01(c.product.allowReviews, ''),
   purchaseNote: (c: RowContext) => c.product.purchaseNote ?? '',
-  salePrice: (c: RowContext) => money(isVariation(c) ? c.variant?.salePrice ?? null : c.product.salePrice),
-  regularPrice: (c: RowContext) => {
-    if (isVariation(c)) {
-      const v = c.variant;
-      if (!v) return '';
-      return money(v.regularPrice ?? v.price);
-    }
-    if (c.product.kind === 'variable') return '';
-    return money(c.product.regularPrice ?? c.product.price);
-  },
+  salePrice: (c: RowContext) => money(pricesFor(c).sale),
+  regularPrice: (c: RowContext) => money(pricesFor(c).regular),
   categories: (c: RowContext) => (isVariation(c) ? '' : c.product.categoryPath ?? c.product.sourceProductType ?? ''),
   tags: (c: RowContext) => (isVariation(c) ? '' : c.product.tags.join(', ')),
   shippingClass: (c: RowContext) => c.product.shippingClass ?? '',
   images: (c: RowContext) => {
     if (isVariation(c)) return c.variant?.imageUrl ?? '';
     const ordered = orderedImages(c.product);
-    return ordered.map((i) => i.url).join(', ');
+    if (ordered.length) return ordered.map((i) => i.url).join(', ');
+    // Nothing in the gallery, but a lone variant may still name an image.
+    return soleVariant(c.product)?.imageUrl ?? '';
   },
   downloadLimit: () => '',
   downloadExpiry: () => '',
@@ -186,6 +240,51 @@ const C = {
 
 function numOrBlank(v: number | null): string {
   return v === null ? '' : String(v);
+}
+
+/**
+ * WooCommerce splits a price into "Regular" and "Sale". A source that publishes
+ * a compare-at price is saying exactly that — the compare-at figure is the
+ * regular price and the current price is the sale price — so the discount is
+ * carried across rather than dropped. Nothing is invented: with no compare-at
+ * price there is simply no sale price.
+ */
+function pricesFor(c: RowContext): { regular: number | null; sale: number | null } {
+  const v = rowVariant(c);
+  if (isVariation(c)) {
+    if (!v) return { regular: null, sale: null };
+    return split(v.price, v.regularPrice, v.salePrice, v.compareAtPrice);
+  }
+  // A variable parent has no price of its own; its variation rows carry them.
+  if (emitsVariations(c.product)) return { regular: null, sale: null };
+  const p = c.product;
+  return split(
+    p.price ?? v?.price ?? null,
+    p.regularPrice ?? v?.regularPrice ?? null,
+    p.salePrice ?? v?.salePrice ?? null,
+    p.compareAtPrice ?? v?.compareAtPrice ?? null
+  );
+}
+
+function split(
+  price: number | null,
+  regular: number | null,
+  sale: number | null,
+  compareAt: number | null
+): { regular: number | null; sale: number | null } {
+  if (regular !== null) return { regular, sale: sale ?? (price !== null && price < regular ? price : null) };
+  if (compareAt !== null && price !== null && compareAt > price) return { regular: compareAt, sale: price };
+  return { regular: price, sale };
+}
+
+/** Centimetres, to match the column header. */
+function dimension(c: RowContext, field: 'length' | 'width' | 'height'): string {
+  const v = rowVariant(c);
+  const raw = isVariation(c) ? v?.[field] ?? null : c.product[field] ?? v?.[field] ?? null;
+  if (raw === null) return '';
+  const unit = isVariation(c) ? v?.dimensionUnit ?? null : c.product.dimensionUnit ?? v?.dimensionUnit ?? null;
+  if (!unit) return String(raw);
+  return numOrBlank(toCentimetres(raw, unit));
 }
 
 function orderedImages(p: CanonicalProduct) {
@@ -294,16 +393,27 @@ export const wooProfile: ExportProfile = {
         }
       });
     }
-    // Weight unit is not a WooCommerce column, but losing it silently would be
-    // wrong when the source was not metric, so it rides along as meta.
+    // The Weight and dimension columns are written in kg and cm to match their
+    // headers. The unit the source actually published is not a WooCommerce
+    // column, but discarding it would hide what was converted, so it rides
+    // along as meta.
     cols.push({
-      header: 'meta:_toto_weight_unit',
+      header: `meta:${META_PREFIX}_source_weight_unit`,
       get: (c) => {
-        const unit = isVariation(c) ? c.variant?.weightUnit ?? null : c.product.weightUnit;
+        const v = rowVariant(c);
+        const unit = isVariation(c) ? v?.weightUnit ?? null : c.product.weightUnit ?? v?.weightUnit ?? null;
         return normaliseWeightUnit(unit) ?? '';
       }
     });
-    cols.push({ header: 'meta:_toto_source_url', get: (c) => (isVariation(c) ? '' : c.product.sourceUrl) });
+    cols.push({
+      header: `meta:${META_PREFIX}_source_dimension_unit`,
+      get: (c) => {
+        const v = rowVariant(c);
+        const unit = isVariation(c) ? v?.dimensionUnit ?? null : c.product.dimensionUnit ?? v?.dimensionUnit ?? null;
+        return normaliseDimensionUnit(unit) ?? '';
+      }
+    });
+    cols.push({ header: `meta:${META_PREFIX}_source_url`, get: (c) => (isVariation(c) ? '' : c.product.sourceUrl) });
     return cols;
   },
 

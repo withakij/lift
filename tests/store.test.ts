@@ -15,7 +15,7 @@ import { humanizeError } from '../src/main/util/logger';
 import type { CanonicalProduct } from '../src/shared/canonical';
 
 function tmp(): string {
-  return mkdtempSync(path.join(tmpdir(), 'toto-test-'));
+  return mkdtempSync(path.join(tmpdir(), 'lift-test-'));
 }
 
 /** Databases opened by the test currently running, closed in its finally. */
@@ -381,14 +381,14 @@ test('money parsing copes with international formats', () => {
 test('robots.txt rules are honoured, including the most specific match', () => {
   const rules = parseRobots(
     ['User-agent: *', 'Disallow: /cart', 'Disallow: /checkout', 'Allow: /cart/info', '', 'User-agent: BadBot', 'Disallow: /'].join('\n'),
-    'TotoMigrator/1.0'
+    'Lift/1.0'
   );
   assert.equal(rules.isAllowed('/products/x'), true);
   assert.equal(rules.isAllowed('/cart'), false);
   assert.equal(rules.isAllowed('/cart/info'), true, 'the longer Allow wins');
   assert.equal(rules.isAllowed('/checkout/pay'), false);
 
-  const targeted = parseRobots(['User-agent: TotoMigrator', 'Disallow: /products'].join('\n'), 'TotoMigrator/1.0');
+  const targeted = parseRobots(['User-agent: Lift', 'Disallow: /products'].join('\n'), 'Lift/1.0');
   assert.equal(targeted.isAllowed('/products/x'), false);
 });
 

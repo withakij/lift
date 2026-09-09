@@ -86,8 +86,9 @@ validation warn that two sources on the same page told different stories.
 |---|---|---|
 | `categoryPath` | `Product Category` + `Type` | `Categories` |
 | `variants[]` | one row each, sharing a `Handle` | one `variation` row each, `Parent` = the parent's SKU |
-| `variant.weight` + `weightUnit` | `Variant Grams` (converted) | `Weight (kg)` + a `meta:` column preserving the unit |
-| `options[]` | `Option1/2/3 Name` + `Value` | numbered `Attribute N` columns |
+| `variant.weight` + `weightUnit` | `Variant Grams` (converted) | `Weight (kg)` (converted) + a `meta:` column recording the source unit |
+| `length/width/height` + `dimensionUnit` | not exported (Shopify has no columns) | `Length/Width/Height (cm)` (converted) + a `meta:` column recording the source unit |
+| `options[]` | `Option1/2/3 Name` + `Value` — more than three is an ERROR | numbered `Attribute N` columns, no limit |
 | `images[]` | one row per image, featured first | comma-separated `Images` |
 | `google.*` | `Google Shopping / …` columns | omitted (WooCommerce has no native columns) |
 
@@ -95,3 +96,16 @@ A product with no variants still needs one row in Shopify, which has no concept
 of a variant-less product: its own values are presented through a single
 `Default Title` variant. That copies nothing between variants and adds nothing
 the source did not provide.
+
+The reverse is just as important going the other way. A Shopify simple product
+*is* a product plus one variant, and its price, SKU, stock and weight live on
+that variant. WooCommerce expects them on the product row, so when a product is
+written without variation rows its lone variant is read onto the product row.
+With two or more variants nothing is lifted, because variation rows carry their
+own values.
+
+Measurements are converted into the unit each column header names — kilograms
+and centimetres for WooCommerce, grams for Shopify — because a number under the
+wrong unit is worse than an empty cell. If a source publishes a measurement but
+never says the unit, the bare number is written unchanged and validation raises
+a warning rather than guessing.

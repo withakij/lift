@@ -1,10 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import * as path from 'node:path';
 import { engineWith, fixture } from './helpers';
-import { buildExport, parseCsv, toCsv } from '../src/main/export';
+import { buildExport, parseCsv, runExport, safeFileName, toCsv } from '../src/main/export';
 import { escapeCsvValue } from '../src/main/export/csv';
 import { validateProducts } from '../src/main/validation/engine';
-import type { CanonicalProduct } from '../src/shared/canonical';
+import { emptyProduct, emptyVariant, type CanonicalProduct } from '../src/shared/canonical';
 import type { ExportOptions } from '../src/shared/types';
 
 const SHOPIFY_URL = 'https://atlas-supply.myshopify.com/products/atlas-merino-crew';
@@ -318,4 +321,191 @@ test('exporting one category selects only that category', async () => {
   const H = (n: string) => built.headers.indexOf(n);
   assert.ok(built.rows.every((r) => r[H('Categories')] === 'Office > Desks' || r[H('Type')] === 'variation'));
   assert.equal(built.included.length, 1);
+});
+
+/* ------------------------------------------------------------------ */
+/* Values that used to be lost on the way out                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Every Shopify "simple" product is one product plus one variant, because
+ * Shopify has no product without variants. WooCommerce keeps those values on
+ * the product row itself, so a lone variant has to be read onto it.
+ */
+function candleWithEverythingOnItsOneVariant(): CanonicalProduct {
+  const p = emptyProduct('cand', 'p1', 'https://atlas.example.com/products/candle');
+  p.title = 'Beeswax Candle';
+  p.kind = 'simple';
+  p.categoryPath = 'Home > Candles';
+  const v = emptyVariant('cand-v1', 'cand', 1);
+  v.sku = 'CANDLE-1';
+  v.price = 18.5;
+  v.compareAtPrice = 24;
+  v.inventoryQuantity = 7;
+  v.stockStatus = 'in_stock';
+  v.weight = 250;
+  v.weightUnit = 'g';
+  v.imageUrl = 'https://img.example.com/candle.jpg';
+  p.variants.push(v);
+  return p;
+}
+
+function wooCells(products: CanonicalProduct[]): Array<Record<string, string>> {
+  const built = buildExport(products, [], opts({ format: 'woocommerce', profileId: 'woocommerce-default' }));
+  return built.rows.map((row) => Object.fromEntries(built.headers.map((h, i) => [h, row[i]])));
+}
+
+test('WooCommerce: a simple product keeps the price, SKU and stock its single variant carried', () => {
+  const [row] = wooCells([candleWithEverythingOnItsOneVariant()]);
+  assert.equal(row['Type'], 'simple');
+  assert.equal(row['SKU'], 'CANDLE-1', 'the variant SKU is the product SKU, not a generated key');
+  assert.equal(row['Regular price'], '24', 'the compare-at price is the regular price');
+  assert.equal(row['Sale price'], '18.5', 'and the current price is the sale price');
+  assert.equal(row['In stock?'], '1');
+  assert.equal(row['Stock'], '7');
+  assert.equal(row['Images'], 'https://img.example.com/candle.jpg');
+});
+
+test('WooCommerce: weight and dimensions are converted into the units the headers promise', () => {
+  const p = emptyProduct('anv', 'p1', 'https://shop.example.com/product/anvil/');
+  p.title = 'Cast Iron Anvil';
+  p.kind = 'simple';
+  p.price = 249;
+  p.weight = 25;
+  p.weightUnit = 'lb';
+  p.length = 18;
+  p.width = 6;
+  p.height = 7;
+  p.dimensionUnit = 'in';
+
+  const [row] = wooCells([p]);
+  assert.equal(row['Weight (kg)'], '11.339809', '25 lb is 11.34 kg, not 25 kg');
+  assert.equal(row['Length (cm)'], '45.72');
+  assert.equal(row['Width (cm)'], '15.24');
+  assert.equal(row['Height (cm)'], '17.78');
+  assert.equal(row['meta:_lift_source_weight_unit'], 'lb', 'the unit the source published is kept');
+  assert.equal(row['meta:_lift_source_dimension_unit'], 'in');
+});
+
+test('WooCommerce: a measurement whose unit the source never published is passed through unchanged', () => {
+  const p = emptyProduct('unk', 'p1', 'https://shop.example.com/product/thing/');
+  p.title = 'Thing';
+  p.kind = 'simple';
+  p.price = 10;
+  p.weight = 2;
+  p.weightUnit = null;
+
+  const [row] = wooCells([p]);
+  assert.equal(row['Weight (kg)'], '2', 'no unit means no conversion, and no invented one either');
+  assert.equal(row['meta:_lift_source_weight_unit'], '');
+
+  const { issues } = validateProducts('p1', [p], 'woocommerce');
+  assert.ok(
+    issues.some((i) => i.severity === 'WARNING' && /did not say in what unit/i.test(i.message)),
+    'and the operator is told the unit is unknown'
+  );
+});
+
+test('WooCommerce: variation rows force the parent to be variable, never simple', () => {
+  const p = candleWithEverythingOnItsOneVariant();
+  p.kind = 'simple';
+  const second = emptyVariant('cand-v2', 'cand', 2);
+  second.sku = 'CANDLE-2';
+  second.price = 20;
+  second.options = [{ name: 'Scent', value: 'Fig' }];
+  p.variants[0].options = [{ name: 'Scent', value: 'Plain' }];
+  p.variants.push(second);
+
+  const rows = wooCells([p]);
+  assert.equal(rows[0]['Type'], 'variable', 'a parent of variation rows cannot be typed simple');
+  assert.equal(rows[1]['Type'], 'variation');
+  assert.equal(rows[1]['Parent'], rows[0]['SKU']);
+  assert.equal(rows[0]['Regular price'], '', 'the parent of a variable product carries no price');
+});
+
+test('Shopify: an option axis it cannot represent is an ERROR, not a silent loss', () => {
+  const p = emptyProduct('chair', 'p1', 'https://shop.example.com/product/chair/');
+  p.title = 'Task Chair';
+  p.kind = 'variable';
+  p.options = [
+    { name: 'Colour', values: ['Black', 'Grey'], position: 1 },
+    { name: 'Arms', values: ['Fixed', 'Adjustable'], position: 2 },
+    { name: 'Base', values: ['Nylon', 'Alloy'], position: 3 },
+    { name: 'Castors', values: ['Carpet', 'Hard floor'], position: 4 }
+  ];
+  ['Black', 'Grey'].forEach((colour, i) => {
+    const v = emptyVariant(`chair-v${i}`, 'chair', i + 1);
+    v.sku = `CHR-${i}`;
+    v.price = 399;
+    v.options = [
+      { name: 'Colour', value: colour },
+      { name: 'Arms', value: 'Adjustable' },
+      { name: 'Base', value: 'Alloy' },
+      { name: 'Castors', value: 'Hard floor' }
+    ];
+    p.variants.push(v);
+  });
+
+  const { issues } = validateProducts('p1', [p], 'shopify');
+  const finding = issues.find((i) => i.ruleId === 'destination-limits');
+  assert.ok(finding, 'the fourth axis has nowhere to go, so it must be reported');
+  assert.equal(finding!.severity, 'ERROR');
+  assert.match(finding!.message, /Castors/);
+
+  // WooCommerce has no such limit, so it says nothing.
+  const woo = validateProducts('p1', [p], 'woocommerce').issues;
+  assert.equal(woo.filter((i) => i.ruleId === 'destination-limits').length, 0);
+});
+
+/* ------------------------------------------------------------------ */
+/* Writing the file                                                    */
+/* ------------------------------------------------------------------ */
+
+test('export file names survive what an operator might type', () => {
+  assert.equal(safeFileName('spring drop', 'fallback'), 'spring drop.csv');
+  assert.equal(safeFileName('spring/drop:2026', 'fallback'), 'spring-drop-2026.csv');
+  assert.equal(safeFileName('report.csv', 'fallback'), 'report.csv', 'the extension is not doubled');
+  assert.equal(safeFileName('trailing dots...', 'fallback'), 'trailing dots.csv', 'Windows would strip these itself');
+  assert.equal(safeFileName('   ', 'fallback'), 'fallback.csv');
+  assert.equal(safeFileName(null, 'fallback'), 'fallback.csv');
+  assert.equal(safeFileName('CON', 'fallback'), 'CON-export.csv', 'Windows refuses device names');
+  assert.ok(safeFileName('x'.repeat(400), 'fallback').length < 140);
+});
+
+test('exporting twice never overwrites the earlier file', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'lift-export-'));
+  try {
+    const products = [candleWithEverythingOnItsOneVariant()];
+    const o = opts({ format: 'woocommerce', profileId: 'woocommerce-default', outputDir: dir, fileName: 'catalogue' });
+    const first = await runExport(products, [], o, dir);
+    const second = await runExport(products, [], o, dir);
+
+    assert.equal(path.basename(first.record.filePath), 'catalogue.csv');
+    assert.equal(path.basename(second.record.filePath), 'catalogue (2).csv');
+    assert.ok(existsSync(first.record.filePath), 'the first export is still there');
+    assert.ok(existsSync(second.record.filePath));
+    assert.ok((first.record.byteSize ?? 0) > 0, 'the size is read back from disk, proving the file exists');
+    assert.equal(readFileSync(first.record.filePath, 'utf8'), first.csv);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('an export with nothing in it fails loudly instead of writing an empty file', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'lift-export-'));
+  try {
+    const p = candleWithEverythingOnItsOneVariant();
+    const { issues } = validateProducts('p1', [p], 'woocommerce');
+    const critical = [
+      ...issues,
+      { ...issues[0], id: 'forced', severity: 'CRITICAL' as const, productId: p.id, message: 'forced' }
+    ];
+    await assert.rejects(
+      () => runExport([p], critical, opts({ format: 'woocommerce', profileId: 'woocommerce-default', outputDir: dir }), dir),
+      /nothing to export/i
+    );
+    assert.equal(readdirSync(dir).length, 0, 'and no misleading headers-only file is left behind');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

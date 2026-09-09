@@ -46,7 +46,7 @@ export interface VariantObservation {
   variantId: string | null;
 }
 
-const PARTITION = 'toto-scrape';
+const PARTITION = 'lift-scrape';
 
 let sharedWindow: BrowserWindow | null = null;
 

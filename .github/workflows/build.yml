@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Tag to publish the installers under (e.g. v1.0.0)'
+        description: 'Tag to publish the installers under (e.g. v1.1.0)'
         required: true
-        default: 'v1.0.0'
+        default: 'v1.1.0'
 
 permissions:
   contents: write
@@ -102,7 +102,7 @@ jobs:
             gh release upload "$TAG" out/* --clobber
           else
             gh release create "$TAG" out/* \
-              --title "ToTo Company $TAG" \
+              --title "Lift $TAG" \
               --notes-file docs/release-notes.md \
               --latest
           fi

@@ -1,5 +1,5 @@
-appId: com.totocompany.migrator
-productName: ToTo Company
+appId: com.lift.app
+productName: Lift
 copyright: Made by Rahul Raj
 
 directories:
@@ -35,7 +35,7 @@ mac:
     LSMinimumSystemVersion: '11.0'
 
 dmg:
-  title: ToTo Company
+  title: Lift
   contents:
     - x: 140
       y: 200
@@ -57,7 +57,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: ToTo Company
+  shortcutName: Lift
 
 linux:
   icon: build/icon.png

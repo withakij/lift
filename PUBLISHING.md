@@ -16,14 +16,14 @@ gh auth login
 ./scripts/publish-to-github.sh
 ```
 
-That creates a **private** repository called `toto-company` under your account,
-pushes the code, tags `v1.0.0`, and starts the build. It then follows the run and
+That creates a **private** repository called `lift` under your account,
+pushes the code, tags `v1.1.0`, and starts the build. It then follows the run and
 opens the release page when it finishes.
 
 Want a link anyone can download from without signing in? Make it public instead:
 
 ```bash
-./scripts/publish-to-github.sh toto-company --public
+./scripts/publish-to-github.sh lift --public
 ```
 
 You can also flip an existing repository later:
@@ -34,9 +34,9 @@ You can also flip an existing repository later:
 ## The manual way
 
 ```bash
-gh repo create toto-company --private --source=. --remote=origin --push
-git tag v1.0.0
-git push origin v1.0.0
+gh repo create lift --private --source=. --remote=origin --push
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
 Then watch **Actions** in the repository. About 5–10 minutes later, the
@@ -44,15 +44,15 @@ Then watch **Actions** in the repository. About 5–10 minutes later, the
 
 | File | For |
 |---|---|
-| `ToTo Company Setup 1.0.0.exe` | **Windows** |
-| `ToTo Company-1.0.0-arm64.dmg` | macOS, Apple silicon |
-| `ToTo Company-1.0.0-x64.dmg` | macOS, Intel |
-| `ToTo Company-1.0.0.AppImage`, `.deb` | Linux |
+| `Lift Setup 1.1.0.exe` | **Windows** |
+| `Lift-1.1.0-arm64.dmg` | macOS, Apple silicon |
+| `Lift-1.1.0-x64.dmg` | macOS, Intel |
+| `Lift-1.1.0.AppImage`, `.deb` | Linux |
 
 Your download link will be:
 
 ```
-https://github.com/<your-username>/toto-company/releases/latest
+https://github.com/<your-username>/lift/releases/latest
 ```
 
 ---

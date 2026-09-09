@@ -61,8 +61,8 @@ export function sanitiseDescription(rawHtml: string | null | undefined, baseUrl:
     return { html: '', text: '', strippedSomething: false, imageUrls: [] };
   }
 
-  const $ = dom.load(`<div id="__toto_root">${rawHtml}</div>`, null, false);
-  const root = $('#__toto_root');
+  const $ = dom.load(`<div id="__lift_root">${rawHtml}</div>`, null, false);
+  const root = $('#__lift_root');
   let stripped = false;
 
   for (const sel of DROP_SELECTORS) {

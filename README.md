@@ -1,4 +1,4 @@
-# ToTo Company
+# Lift
 
 **Made by Rahul Raj**
 
@@ -41,7 +41,7 @@ every installer for you.
 
 Once you have one:
 
-- **macOS** — open the `.dmg`, drag **ToTo Company** to Applications. The first
+- **macOS** — open the `.dmg`, drag **Lift** to Applications. The first
   launch of an unsigned personal build needs a right-click → **Open** → **Open**;
   after that it opens normally. [Details](docs/RELEASE.md#macos-first-launch)
 - **Windows** — run the `.exe` installer.

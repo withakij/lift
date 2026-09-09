@@ -136,7 +136,7 @@ export interface AppInfo {
   dataDir: string;
 }
 
-export interface TotoApi {
+export interface LiftApi {
   projects: {
     list(): Promise<Project[]>;
     get(id: string): Promise<Project | null>;

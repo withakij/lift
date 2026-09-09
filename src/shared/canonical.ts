@@ -523,3 +523,67 @@ export function normaliseWeightUnit(unit: string | null): string | null {
   if (['oz', 'ounce', 'ounces'].includes(key)) return 'oz';
   return null;
 }
+
+/**
+ * Kilograms, for exports whose weight column is metric. Returns null when the
+ * unit is not one we recognise, because a number under the wrong unit is worse
+ * than an empty cell: it silently misprices shipping.
+ */
+export function toKilograms(value: number | null, unit: string | null): number | null {
+  const grams = toGrams(value, unit);
+  return grams === null ? null : Math.round((grams / 1000) * 1e6) / 1e6;
+}
+
+/* ------------------------------------------------------------------ */
+/* Dimension helpers                                                   */
+/* ------------------------------------------------------------------ */
+
+const CM_PER: Record<string, number> = {
+  cm: 1,
+  cms: 1,
+  centimetre: 1,
+  centimetres: 1,
+  centimeter: 1,
+  centimeters: 1,
+  mm: 0.1,
+  millimetre: 0.1,
+  millimetres: 0.1,
+  millimeter: 0.1,
+  millimeters: 0.1,
+  m: 100,
+  metre: 100,
+  metres: 100,
+  meter: 100,
+  meters: 100,
+  in: 2.54,
+  ins: 2.54,
+  inch: 2.54,
+  inches: 2.54,
+  '"': 2.54,
+  ft: 30.48,
+  foot: 30.48,
+  feet: 30.48,
+  yd: 91.44,
+  yard: 91.44,
+  yards: 91.44
+};
+
+export function toCentimetres(value: number | null, unit: string | null): number | null {
+  if (value === null || !Number.isFinite(value)) return null;
+  const key = (unit ?? 'cm').trim().toLowerCase();
+  const factor = CM_PER[key];
+  if (factor === undefined) return null;
+  return Math.round(value * factor * 1000) / 1000;
+}
+
+export function normaliseDimensionUnit(unit: string | null): string | null {
+  if (!unit) return null;
+  const key = unit.trim().toLowerCase();
+  if (['cm', 'cms', 'centimetre', 'centimetres', 'centimeter', 'centimeters'].includes(key)) return 'cm';
+  if (['mm', 'millimetre', 'millimetres', 'millimeter', 'millimeters'].includes(key)) return 'mm';
+  if (['m', 'metre', 'metres', 'meter', 'meters'].includes(key)) return 'm';
+  if (['in', 'ins', 'inch', 'inches', '"'].includes(key)) return 'in';
+  if (['ft', 'foot', 'feet'].includes(key)) return 'ft';
+  if (['yd', 'yard', 'yards'].includes(key)) return 'yd';
+  return null;
+}

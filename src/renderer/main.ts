@@ -106,7 +106,7 @@ const shell = h(
     h(
       'div',
       { class: 'brand__text' },
-      h('div', { class: 'brand__name' }, 'ToTo Company'),
+      h('div', { class: 'brand__name' }, 'Lift'),
       h('div', { class: 'brand__by' }, 'Made by ', h('b', null, 'Rahul Raj'))
     )
   ),
@@ -149,7 +149,7 @@ function renderNav(): void {
     h(
       'div',
       { class: 'nav__footer' },
-      h('div', null, 'ToTo Company'),
+      h('div', null, 'Lift'),
       h('div', { class: 'faint' }, 'Made by Rahul Raj'),
       s.progress && (s.progress.state === 'running' || s.progress.state === 'paused')
         ? h(
@@ -317,7 +317,7 @@ function renderMain(): void {
             'div',
             { class: 'card card__pad', style: 'text-align:center' },
             h('div', { class: 'brand__mark', style: 'width:52px;height:52px;border-radius:15px;font-size:21px;margin:0 auto 16px' }, 'T'),
-            h('h2', { style: 'margin:0 0 6px;font-size:19px;letter-spacing:-0.02em' }, 'Welcome to ToTo Company'),
+            h('h2', { style: 'margin:0 0 6px;font-size:19px;letter-spacing:-0.02em' }, 'Welcome to Lift'),
             h(
               'p',
               { class: 'muted', style: 'margin:0 auto 20px;max-width:440px;line-height:1.65' },
@@ -391,7 +391,7 @@ async function boot(): Promise<void> {
           icon: 'error',
           title: 'The application could not start',
           body:
-            'The interface is not connected to the application core. Reopening ToTo Company usually resolves this; if it persists, reinstall the app.'
+            'The interface is not connected to the application core. Reopening Lift usually resolves this; if it persists, reinstall the app.'
         })
       )
     );

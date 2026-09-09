@@ -122,8 +122,8 @@ export function currentCategory(): Category | null {
   return id ? state.categories.find((c) => c.id === id) ?? null : null;
 }
 
-const LAST_PROJECT_KEY = 'toto.lastProject';
-const LAST_VIEW_KEY = 'toto.lastView';
+const LAST_PROJECT_KEY = 'lift.lastProject';
+const LAST_VIEW_KEY = 'lift.lastView';
 
 export function rememberSession(): void {
   try {
