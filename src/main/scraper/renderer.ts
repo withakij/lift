@@ -9,7 +9,7 @@
  * private session partition that is cleared between runs, and it never becomes
  * visible. It only ever *reads* the page.
  */
-import { BrowserWindow, session, type Electron } from 'electron';
+import { BrowserWindow, session } from 'electron';
 import { log } from '../util/logger';
 
 export interface RenderResult {
