@@ -1,0 +1,71 @@
+appId: com.totocompany.migrator
+productName: ToTo Company
+copyright: Made by Rahul Raj
+
+directories:
+  output: release
+  buildResources: build
+
+# The app is dependency-free: only the compiled output and package.json ship.
+files:
+  - dist/**/*
+  - package.json
+  - '!**/*.map'
+
+asar: true
+compression: normal
+
+mac:
+  category: public.app-category.productivity
+  icon: build/icon.png
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  darkModeSupport: true
+  # Unsigned personal build: without a Developer ID, macOS quarantines the app.
+  # RELEASE.md explains the one-time right-click → Open, and how to sign if you
+  # ever get a certificate.
+  identity: null
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  extendInfo:
+    NSHumanReadableCopyright: Made by Rahul Raj
+    LSMinimumSystemVersion: '11.0'
+
+dmg:
+  title: ToTo Company
+  contents:
+    - x: 140
+      y: 200
+      type: file
+    - x: 400
+      y: 200
+      type: link
+      path: /Applications
+
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ToTo Company
+
+linux:
+  icon: build/icon.png
+  category: Office
+  target:
+    - AppImage
+    - deb
+
+# No auto-update server: this is a personal build, and the app must never phone
+# home. New versions are installed by hand.
+publish: null

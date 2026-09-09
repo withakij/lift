@@ -3,7 +3,12 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node", "electron"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["src/main/**/*.ts", "src/shared/**/*.ts"]
+  "include": [
+    "src/main/**/*.ts",
+    "src/shared/**/*.ts"
+  ]
 }

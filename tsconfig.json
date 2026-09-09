@@ -1,7 +1,12 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.main.json" },
-    { "path": "./tsconfig.renderer.json" }
-  ]
+  // Editor convenience only. Builds always use tsconfig.main.json and
+  // tsconfig.renderer.json, which scope each process to its own globals.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "moduleResolution": "bundler",
+    "module": "es2022"
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
 }
