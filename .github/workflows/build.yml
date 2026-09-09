@@ -55,6 +55,9 @@ jobs:
         with:
           node-version: 22
       - run: npm install
+      - name: Disable Spotlight indexing (works around hdiutil detach races when building DMGs)
+        if: runner.os == 'macOS'
+        run: sudo mdutil -i off / || true
       - name: Build
         run: ${{ matrix.command }}
         env:

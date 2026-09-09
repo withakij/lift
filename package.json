@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "description": "Universal product data scraper and e-commerce migration preparation desktop application.",
   "author": {
-    "name": "Rahul Raj"
+    "name": "Rahul Raj",
+    "email": "therahulraj.personal@gmail.com"
   },
   "license": "UNLICENSED",
   "private": true,
@@ -30,7 +31,7 @@
     "@types/node": "^22.0.0",
     "cross-env": "^7.0.3",
     "electron": "^33.0.0",
-    "electron-builder": "^25.0.0",
+    "electron-builder": "^26.0.0",
     "typescript": "^5.6.0"
   },
   "repository": {
