@@ -1,0 +1,44 @@
+{
+  "name": "toto-product-migrator",
+  "productName": "ToTo Company",
+  "version": "1.0.0",
+  "description": "Universal product data scraper and e-commerce migration preparation desktop application.",
+  "author": {
+    "name": "Rahul Raj"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "dist/main/index.js",
+  "scripts": {
+    "clean": "rimraf dist release",
+    "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "vite build",
+    "build": "npm run clean && npm run build:main && npm run build:renderer",
+    "dev": "concurrently -k -n VITE,TSC,ELECTRON -c cyan,yellow,green \"vite\" \"tsc -p tsconfig.main.json -w --preserveWatchOutput\" \"wait-on tcp:5273 dist/main/index.js && cross-env TOTO_DEV=1 electron .\"",
+    "start": "npm run build && electron .",
+    "test": "node --test --experimental-strip-types tests/*.test.ts",
+    "pack:dir": "npm run build && electron-builder --dir",
+    "dist:mac": "npm run build && electron-builder --mac --arm64 --x64",
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "dist:linux": "npm run build && electron-builder --linux --x64",
+    "dist": "npm run build && electron-builder -mwl"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "wait-on": "^8.0.1"
+  }
+}
